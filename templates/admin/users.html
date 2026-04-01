@@ -1,0 +1,272 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="row gx-4 mt-3 align-items-center">
+    <div class="col-md-6 mb-3 mb-md-0">
+        <h2 class="fw-bold mb-0 text-primary d-flex align-items-center"><i class="fa-solid fa-users-gear me-2"></i> User Directory</h2>
+        <p class="text-muted text-sm mt-1 mb-0">Manage platform access, view productivity, and export data.</p>
+    </div>
+    <div class="col-md-7 text-md-end text-start">
+        {% if is_admin %}
+        <button class="btn btn-primary rounded-pill fw-bold shadow-sm hover-lift me-2 mb-2 mb-md-0" data-bs-toggle="modal" data-bs-target="#createRoleModal">
+            <i class="fa-solid fa-plus"></i> New Role
+        </button>
+        {% endif %}
+        {% if is_manager %}
+        <button class="btn btn-warning rounded-pill fw-bold shadow-sm hover-lift me-2 mb-2 mb-md-0 text-dark" data-bs-toggle="modal" data-bs-target="#broadcastTaskModal">
+            <i class="fa-solid fa-bullhorn"></i> Broadcast Task
+        </button>
+        {% endif %}
+        {% if is_admin %}
+        <a href="{{ url_for('export_users') }}" class="btn btn-outline-success rounded-pill fw-bold shadow-sm hover-lift me-2 mb-2 mb-md-0">
+            <i class="fa-solid fa-file-csv"></i> Export CSV
+        </a>
+        {% endif %}
+        <div class="badge bg-primary fs-6 px-4 py-2 rounded-pill shadow-sm">
+            Total Users: {{ users|length }}
+        </div>
+    </div>
+</div>
+
+<div class="card glass-card shadow-sm border-0 rounded-4 my-4">
+    <div class="card-header bg-transparent border-bottom-0 pt-4 pb-3">
+        <form method="GET" action="{{ url_for('admin_users') }}" class="d-flex w-100 max-w-sm ms-auto">
+            <div class="input-group shadow-sm rounded-pill overflow-hidden w-100 max-w-300">
+                <input type="text" name="q" class="form-control border-0 bg-light px-3" placeholder="Search usernames..." value="{{ search_query }}">
+                <button type="submit" class="btn btn-primary px-3 rounded-end-pill"><i class="fa-solid fa-search"></i></button>
+            </div>
+        </form>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0 text-nowrap">
+                <thead class="table-light">
+                    <tr>
+                        <th class="ps-4 fw-bold">ID</th>
+                        <th class="fw-bold">User</th>
+                        <th class="fw-bold">Role</th>
+                        <th class="text-center fw-bold">Assets (Tasks / Files)</th>
+                        <th class="text-end pe-4 fw-bold">Actions</th>
+                    </tr>
+                </thead>
+                <tbody class="border-top-0">
+                    {% for user in users %}
+                    <tr class="transition-all hover-lift">
+                        <td class="ps-4 fw-medium text-secondary">#{{ user.id }}</td>
+                        <td>
+                            <div class="d-flex align-items-center gap-3">
+                                <img src="{{ url_for('static', filename='uploads/' + user.profile_image) }}" alt="Avatar" class="rounded-circle object-fit-cover shadow-sm bg-light" width="45" height="45" onerror="this.src='https://ui-avatars.com/api/?name={{ user.username }}&background=random'">
+                                <span class="fw-bold">{{ user.username }}</span>
+                            </div>
+                        </td>
+                        <td>
+                            {% if is_admin and user.id != current_user.id %}
+                            <form action="{{ url_for('set_role', user_id=user.id) }}" method="POST" class="m-0">
+                                <select name="new_role" class="form-select form-select-sm border border-secondary rounded-pill shadow-sm w-auto d-inline-block fw-bold {{ 'text-danger' if user.role == 'admin' else 'text-primary' }}" onchange="this.form.submit()">
+                                    {% for role in available_roles %}
+                                    <option value="{{ role.name }}" {% if user.role == role.name %}selected{% endif %}>{{ role.name|capitalize }}</option>
+                                    {% endfor %}
+                                </select>
+                            </form>
+                            {% else %}
+                            <span class="badge {{ 'bg-danger' if user.role == 'admin' else ('bg-warning text-dark' if user.role == 'manager' else 'bg-success') }} rounded-pill px-3 shadow-sm"><i class="fa-solid {{ 'fa-shield-halved' if user.role == 'admin' else 'fa-user' }}"></i> {{ user.role|capitalize }}</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-center">
+                            <span class="badge bg-secondary rounded-pill me-1"><i class="fa-solid fa-list-check"></i> {{ user.tasks|length }}</span>
+                            <span class="badge bg-secondary rounded-pill"><i class="fa-solid fa-folder-open"></i> {{ user.files|length }}</span>
+                        </td>
+                        <td class="text-end pe-4">
+                            <div class="btn-group shadow-sm rounded-pill bg-white">
+                                {% if is_manager %}
+                                    <!-- Assign Task directly -->
+                                    <button type="button" class="btn btn-sm btn-light border" data-bs-toggle="modal" data-bs-target="#assignTaskModal{{ user.id }}" title="Assign Task">
+                                        <i class="fa-solid fa-thumbtack text-warning text-dark"></i>
+                                    </button>
+                                {% endif %}
+                                <!-- Roles logic -->
+                                {% if is_admin %}
+                                    <button type="button" class="btn btn-sm btn-light border" data-bs-toggle="modal" data-bs-target="#renameModal{{ user.id }}" title="Rename User">
+                                        <i class="fa-solid fa-pen-to-square text-primary"></i>
+                                    </button>
+                                    <button type="button" class="btn btn-sm btn-light border" data-bs-toggle="modal" data-bs-target="#deleteModal{{ user.id }}" title="Delete User">
+                                        <i class="fa-solid fa-trash-can text-danger"></i>
+                                    </button>
+                                    {% if user.id != current_user.id %}
+                                        <!-- Rename only via JS, role changes handled in designated column -->
+                                    {% else %}
+                                    <button class="btn btn-sm btn-light border" disabled title="Cannot modify self"><i class="fa-solid fa-lock text-muted"></i></button>
+                                    {% endif %}
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% if not users %}
+            <div class="text-center py-5 text-muted">
+                <i class="fa-solid fa-users-slash fs-1 text-secondary opacity-50 mb-3 d-block"></i>
+                <h5>No users found</h5>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Create Role Modal -->
+<div class="modal fade" id="createRoleModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content glass-card rounded-4 border-0 shadow-lg">
+            <form action="{{ url_for('create_role') }}" method="POST">
+                <div class="modal-header border-bottom-0 pb-0">
+                    <h5 class="modal-title fw-bold text-primary"><i class="fa-solid fa-plus-circle me-2"></i>Create New Role</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label text-muted small fw-semibold">Role Name</label>
+                        <input type="text" name="role_name" class="form-control bg-light border-0 shadow-sm rounded-pill px-3" placeholder="e.g. editor, VIP" required>
+                    </div>
+                </div>
+                <div class="modal-footer border-top-0 pt-0">
+                    <button type="button" class="btn btn-light rounded-pill px-4" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary rounded-pill px-4 fw-bold">Save Role</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Rename User Modals -->
+{% for user in users %}
+<div class="modal fade" id="renameModal{{ user.id }}" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content glass-card rounded-4 border-0 shadow-lg">
+            <form action="{{ url_for('rename_user', user_id=user.id) }}" method="POST">
+                <div class="modal-header border-bottom-0 pb-0">
+                    <h5 class="modal-title fw-bold text-primary"><i class="fa-solid fa-pen-to-square me-2"></i>Rename User</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label text-muted small fw-semibold">New Username for <strong>{{ user.username }}</strong></label>
+                        <input type="text" name="new_username" class="form-control bg-light border-0 shadow-sm rounded-pill px-3" value="{{ user.username }}" required>
+                    </div>
+                </div>
+                <div class="modal-footer border-top-0 pt-0">
+                    <button type="button" class="btn btn-light rounded-pill px-4" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary rounded-pill px-4 fw-bold">Save Changes</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="deleteModal{{ user.id }}" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content glass-card rounded-4 border-0 shadow-lg">
+            <form action="{{ url_for('delete_user', user_id=user.id) }}" method="POST">
+                <div class="modal-header border-bottom-0 pb-0">
+                    <h5 class="modal-title fw-bold text-danger"><i class="fa-solid fa-triangle-exclamation me-2"></i>Delete User</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <p class="mb-0 text-muted">Are you absolutely sure you want to permanently delete <strong>{{ user.username }}</strong>? This action will instantly erase their profile, all tasks, uploaded files, and message history everywhere.<br><br><strong>This action is irreversible.</strong></p>
+                    </div>
+                </div>
+                <div class="modal-footer border-top-0 pt-0">
+                    <button type="button" class="btn btn-light rounded-pill px-4" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-danger rounded-pill px-4 fw-bold">Permanent Delete</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="assignTaskModal{{ user.id }}" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content glass-card rounded-4 border-0 shadow-lg">
+            <form action="{{ url_for('assign_task', user_id=user.id) }}" method="POST">
+                <div class="modal-header border-bottom-0 pb-0">
+                    <h5 class="modal-title fw-bold text-warning text-dark"><i class="fa-solid fa-thumbtack me-2"></i>Assign Task to {{ user.username }}</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label text-muted small fw-semibold">Task Title</label>
+                        <input type="text" name="title" class="form-control bg-light border-0 shadow-sm rounded-pill px-3" placeholder="What needs to be done?" required>
+                    </div>
+                    <div class="row gx-3">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label text-muted small fw-semibold">Category</label>
+                            <select name="category" class="form-select bg-light border-0 shadow-sm rounded-pill px-3">
+                                <option>Work</option><option>Personal</option><option>Urgent</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label text-muted small fw-semibold">Priority</label>
+                            <select name="priority" class="form-select bg-light border-0 shadow-sm rounded-pill px-3">
+                                <option>Low</option><option selected>Medium</option><option>High</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label text-muted small fw-semibold">Due Date (Optional)</label>
+                        <input type="datetime-local" name="due_date" class="form-control bg-light border-0 shadow-sm rounded-pill px-3">
+                    </div>
+                </div>
+                <div class="modal-footer border-top-0 pt-0">
+                    <button type="button" class="btn btn-light rounded-pill px-4" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-warning rounded-pill px-4 fw-bold">Assign Task</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endfor %}
+
+<!-- Broadcast Task Modal -->
+<div class="modal fade" id="broadcastTaskModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content glass-card rounded-4 border-0 shadow-lg">
+            <form action="{{ url_for('broadcast_task') }}" method="POST">
+                <div class="modal-header border-bottom-0 pb-0 bg-warning bg-opacity-10 rounded-top-4">
+                    <h5 class="modal-title fw-bold text-dark"><i class="fa-solid fa-bullhorn text-warning me-2"></i>Broadcast Task</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="text-muted small mb-3">Assign a task to <strong>EVERY</strong> active user on the platform simultaneously.</p>
+                    <div class="mb-3">
+                        <label class="form-label text-muted small fw-semibold">Task Title</label>
+                        <input type="text" name="title" class="form-control bg-light border-0 shadow-sm rounded-pill px-3" placeholder="Important announcement or global task..." required>
+                    </div>
+                    <div class="row gx-3">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label text-muted small fw-semibold">Category</label>
+                            <select name="category" class="form-select bg-light border-0 shadow-sm rounded-pill px-3">
+                                <option>Work</option><option>Personal</option><option selected>Urgent</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label text-muted small fw-semibold">Priority</label>
+                            <select name="priority" class="form-select bg-light border-0 shadow-sm rounded-pill px-3">
+                                <option>Low</option><option>Medium</option><option selected>High</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label text-muted small fw-semibold">Due Date (Optional)</label>
+                        <input type="datetime-local" name="due_date" class="form-control bg-light border-0 shadow-sm rounded-pill px-3">
+                    </div>
+                </div>
+                <div class="modal-footer border-top-0 pt-0">
+                    <button type="button" class="btn btn-light rounded-pill px-4" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-warning rounded-pill px-4 fw-bold">Broadcast to All Users</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

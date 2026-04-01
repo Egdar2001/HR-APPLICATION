@@ -1,0 +1,66 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="row gx-4 mt-3">
+    <div class="col-md-4 mb-4">
+        <div class="card glass-card text-center h-100 border-0 rounded-4 shadow-sm p-4">
+            <h4 class="fw-bold mb-3"><i class="fa-solid fa-cloud-arrow-up text-primary me-2"></i>Upload File</h4>
+            <p class="text-muted small">Store your important documents securely in your personalized cloud drive.</p>
+            <form action="{{ url_for('file_manager') }}" method="POST" enctype="multipart/form-data"
+                class="w-100 mt-3 p-3 bg-light bg-opacity-10 rounded-4 border">
+                <div class="mb-3 text-start">
+                    <label class="form-label text-muted small fw-semibold"><i class="fa-solid fa-file"></i> Select File
+                        (Max 16MB)</label>
+                    <input class="form-control form-control-sm border-0 shadow-sm rounded-pill" type="file" name="file"
+                        required>
+                </div>
+                <button type="submit" class="btn btn-primary btn-sm w-100 rounded-pill fw-bold hover-lift shadow-sm"><i
+                        class="fa-solid fa-upload"></i> Save to Cloud</button>
+            </form>
+        </div>
+    </div>
+
+    <div class="col-md-8">
+        <div class="card glass-card border-0 rounded-4 shadow-sm h-100">
+            <div class="card-header bg-transparent border-bottom-0 pt-4 pb-2">
+                <h4 class="fw-bold mb-0"><i class="fa-solid fa-hard-drive text-warning me-2"></i>My Drive</h4>
+            </div>
+            <div class="card-body">
+                {% if files %}
+                <div class="list-group list-group-flush gap-2">
+                    {% for f in files %}
+                    <div
+                        class="list-group-item d-flex justify-content-between align-items-center border-0 rounded-3 bg-light bg-opacity-50 py-3 mb-2 shadow-sm file-item transition-all">
+                        <div class="d-flex align-items-center gap-3 w-100 text-truncate">
+                            <i class="fa-solid fa-file-lines fs-3 text-secondary"></i>
+                            <div class="flex-grow-1 text-truncate">
+                                <h6 class="mb-0 fw-bold text-truncate">{{ f.original_name }}</h6>
+                                <small class="text-muted">{{ f.uploaded_at.strftime('%b %d, %Y') }}</small>
+                            </div>
+                        </div>
+                        <div class="btn-group shadow-sm rounded-pill">
+                            <a href="{{ url_for('download_file', file_id=f.id) }}"
+                                class="btn btn-sm btn-light border text-primary" title="Download">
+                                <i class="fa-solid fa-download"></i>
+                            </a>
+                            <form action="{{ url_for('delete_file', file_id=f.id) }}" method="POST" class="m-0"
+                                onsubmit="return confirm('Delete file permanently?');">
+                                <button type="submit" class="btn btn-sm btn-light border text-danger" title="Delete">
+                                    <i class="fa-solid fa-trash-can"></i>
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="text-center py-5 text-muted">
+                    <i class="fa-solid fa-cloud fs-1 mb-3 opacity-25"></i>
+                    <h5>Your drive is empty</h5>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
